@@ -1,0 +1,30 @@
+{
+  "name": "mehfil",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mehfil — Community + Ticketing platform (joinmehfil.co). Web, iOS, Android.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "overrides": {
+    "react-native": "0.74.5",
+    "@expo/vector-icons": {
+      "react-native": "0.74.5",
+      "react": "18.2.0"
+    }
+  },
+  "scripts": {
+    "db:up": "docker compose up -d postgres redis",
+    "db:down": "docker compose down",
+    "backend:dev": "npm run start:dev --workspace @mehfil/backend",
+    "backend:build": "npm run build --workspace @mehfil/backend",
+    "web:dev": "npm run dev --workspace @mehfil/web",
+    "web:build": "npm run build --workspace @mehfil/web",
+    "mobile:start": "npm run start --workspace @mehfil/mobile",
+    "prisma:migrate": "npm run prisma:migrate --workspace @mehfil/backend",
+    "prisma:seed": "npm run prisma:seed --workspace @mehfil/backend",
+    "test": "npm run test --workspace @mehfil/backend",
+    "typecheck": "tsc -b apps/backend packages/shared"
+  }
+}

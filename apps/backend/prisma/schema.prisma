@@ -1,0 +1,1073 @@
+// ===========================================================================
+// Mehfil Platform — Prisma Schema (Phase 1 / MVP)
+// Community (Circle-style) + Ticketing (Eventbrite-style) + Social + Admin
+// PostgreSQL. Money stored as Decimal(12,2); API layer serializes to numbers.
+// ===========================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------- ENUMS ------------------------------------
+
+enum UserRole {
+  USER
+  MODERATOR
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  PENDING_VERIFICATION
+  SUSPENDED
+  BANNED
+  DELETED
+}
+
+enum ProfileVisibility {
+  PUBLIC
+  PRIVATE
+  MEMBERS_ONLY
+}
+
+enum ConnectionStatus {
+  PENDING
+  ACCEPTED
+  BLOCKED
+}
+
+enum CommunityAccess {
+  PUBLIC
+  PRIVATE
+  SECRET
+}
+
+enum CommunityRole {
+  OWNER
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+enum CommunityMemberStatus {
+  ACTIVE
+  PENDING
+  MUTED
+  SUSPENDED
+  BANNED
+}
+
+enum SpaceType {
+  DISCUSSION
+  ANNOUNCEMENTS
+  EVENTS
+  COURSES
+  CHAT
+}
+
+enum PostType {
+  TEXT
+  IMAGE
+  VIDEO
+  POLL
+  FILE
+}
+
+enum PostStatus {
+  PUBLISHED
+  DRAFT
+  SCHEDULED
+  UNDER_REVIEW
+  REMOVED
+}
+
+enum ReactionType {
+  LIKE
+  LOVE
+  SUPPORT
+  INSIGHTFUL
+  CELEBRATE
+}
+
+enum EventType {
+  ONLINE
+  IN_PERSON
+  HYBRID
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  ONGOING
+  COMPLETED
+  CANCELLED
+}
+
+enum RsvpStatus {
+  INTERESTED
+  GOING
+  NOT_GOING
+  WAITLISTED
+}
+
+enum TicketType {
+  FREE
+  PAID
+  EARLY_BIRD
+  VIP
+  GROUP
+  INVITE_ONLY
+}
+
+enum OrderStatus {
+  PENDING
+  HELD
+  PAID
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  MOCK_CARD
+  CASH
+  BANK_TRANSFER
+  JAZZCASH
+  EASYPAISA
+  FREE
+}
+
+enum PaymentStatus {
+  PENDING
+  AWAITING_APPROVAL
+  APPROVED
+  REJECTED
+  REFUNDED
+}
+
+enum TicketStatus {
+  VALID
+  USED
+  CANCELLED
+  REFUNDED
+  EXPIRED
+}
+
+enum DiscountType {
+  PERCENT
+  FIXED
+}
+
+enum RefundStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  PROCESSED
+}
+
+enum CheckInMethod {
+  QR
+  MANUAL
+  SEARCH
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum ConversationType {
+  DIRECT
+  GROUP
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  FILE
+  SYSTEM
+}
+
+enum NotificationType {
+  CONNECTION_REQUEST
+  CONNECTION_ACCEPTED
+  NEW_FOLLOWER
+  POST_LIKE
+  POST_COMMENT
+  COMMENT_REPLY
+  MENTION
+  MESSAGE
+  COMMUNITY_JOIN
+  COMMUNITY_ACTIVITY
+  EVENT_REMINDER
+  EVENT_UPDATE
+  TICKET_PURCHASED
+  SKILL_REQUEST
+  SYSTEM
+}
+
+enum ReportTargetType {
+  USER
+  POST
+  COMMENT
+  COMMUNITY
+  EVENT
+  MESSAGE
+}
+
+enum ReportReason {
+  SPAM
+  HARASSMENT
+  HATE_SPEECH
+  VIOLENCE
+  NUDITY
+  MISINFORMATION
+  SCAM
+  INAPPROPRIATE_CONTENT
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+enum SubscriptionTier {
+  FREE
+  PREMIUM
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum SkillRelation {
+  OFFER
+  WANT
+}
+
+enum SkillExchangeStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  COMPLETED
+  CANCELLED
+}
+
+enum MediaKind {
+  IMAGE
+  VIDEO
+  FILE
+  AVATAR
+  COVER
+}
+
+enum TokenPurpose {
+  EMAIL_VERIFY
+  PHONE_VERIFY
+  PASSWORD_RESET
+}
+
+enum Platform {
+  IOS
+  ANDROID
+  WEB
+}
+
+// ------------------------------- USERS ------------------------------------
+
+model User {
+  id            String            @id @default(cuid())
+  email         String            @unique
+  phone         String?           @unique
+  username      String            @unique
+  passwordHash  String
+  displayName   String
+  avatarUrl     String?
+  coverUrl      String?
+  bio           String?           @db.Text
+  aboutMe       String?           @db.Text
+  city          String?
+  country       String?
+  location      String?
+  lat           Float?
+  lng           Float?
+  dateOfBirth   DateTime?
+  gender        String?
+  interests     String[]          @default([])
+  visibility    ProfileVisibility @default(PUBLIC)
+  role          UserRole          @default(USER)
+  status        UserStatus        @default(ACTIVE)
+  emailVerified Boolean           @default(false)
+  phoneVerified Boolean           @default(false)
+  isVerified    Boolean           @default(false)
+  ageAcceptedAt DateTime?
+  locale        String            @default("en")
+  timezone      String            @default("Asia/Karachi")
+  lastSeenAt    DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  deletedAt     DateTime?
+
+  refreshTokens         RefreshToken[]
+  verificationTokens    VerificationToken[]
+  deviceTokens          DeviceToken[]
+  subscription          Subscription?
+  notificationPref      NotificationPreference?
+  notifications         Notification[]
+  followsInitiated      Follow[]                  @relation("Follower")
+  followsReceived       Follow[]                  @relation("Following")
+  blocksInitiated       Block[]                   @relation("Blocker")
+  blocksReceived        Block[]                   @relation("Blocked")
+  skills                UserSkill[]
+  skillRequestsSent     SkillExchangeRequest[]    @relation("SkillFrom")
+  skillRequestsReceived SkillExchangeRequest[]    @relation("SkillTo")
+  communityMemberships  CommunityMember[]
+  ownedCommunities      Community[]               @relation("CommunityOwner")
+  communityInvites      CommunityInvite[]         @relation("CommunityInviter")
+  posts                 Post[]
+  comments              Comment[]
+  reactions             Reaction[]
+  bookmarks             Bookmark[]
+  pollVotes             PollVote[]
+  uploadedMedia         Media[]
+  organizedEvents       Event[]                   @relation("EventOrganizer")
+  rsvps                 EventRsvp[]
+  orders                Order[]
+  paymentsApproved      Payment[]                 @relation("PaymentApprover")
+  scannedCheckIns       CheckIn[]                 @relation("CheckInScanner")
+  payouts               Payout[]
+  conversationParts     ConversationParticipant[]
+  sentMessages          Message[]
+  reportsFiled          Report[]                  @relation("Reporter")
+  reportsReviewed       Report[]                  @relation("ReportReviewer")
+
+  @@index([city])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model RefreshToken {
+  id           String    @id @default(cuid())
+  userId       String
+  tokenHash    String    @unique
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?
+  userAgent    String?
+  ip           String?
+  createdAt    DateTime  @default(now())
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  id        String       @id @default(cuid())
+  userId    String?
+  email     String
+  purpose   TokenPurpose
+  tokenHash String       @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime     @default(now())
+  user      User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@index([userId])
+}
+
+model DeviceToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  platform  Platform
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Follow {
+  id          String           @id @default(cuid())
+  followerId  String
+  followingId String
+  status      ConnectionStatus @default(ACCEPTED)
+  createdAt   DateTime         @default(now())
+  follower    User             @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User             @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followingId])
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+  blocker   User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User     @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+}
+
+model UserSkill {
+  id        String        @id @default(cuid())
+  userId    String
+  name      String
+  relation  SkillRelation
+  level     String?
+  createdAt DateTime      @default(now())
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name, relation])
+  @@index([name, relation])
+}
+
+model SkillExchangeRequest {
+  id           String              @id @default(cuid())
+  fromUserId   String
+  toUserId     String
+  offeredSkill String
+  wantedSkill  String
+  message      String?             @db.Text
+  status       SkillExchangeStatus @default(PENDING)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  fromUser     User                @relation("SkillFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser       User                @relation("SkillTo", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@index([fromUserId])
+  @@index([toUserId])
+}
+
+model Subscription {
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  tier               SubscriptionTier   @default(FREE)
+  status             SubscriptionStatus @default(ACTIVE)
+  provider           String?
+  providerSubId      String?
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  cancelAtPeriodEnd  Boolean            @default(false)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------- COMMUNITIES ---------------------------------
+
+model Community {
+  id          String          @id @default(cuid())
+  name        String
+  slug        String          @unique
+  description String?         @db.Text
+  avatarUrl   String?
+  coverUrl    String?
+  access      CommunityAccess @default(PUBLIC)
+  category    String?
+  city        String?
+  country     String?
+  lat         Float?
+  lng         Float?
+  ownerId     String
+  memberCount Int             @default(0)
+  postCount   Int             @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  deletedAt   DateTime?
+
+  owner   User              @relation("CommunityOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members CommunityMember[]
+  spaces  CommunitySpace[]
+  posts   Post[]
+  events  Event[]
+  invites CommunityInvite[]
+  media   Media[]
+
+  @@index([category])
+  @@index([city])
+  @@index([ownerId])
+}
+
+model CommunityMember {
+  id          String                @id @default(cuid())
+  communityId String
+  userId      String
+  role        CommunityRole         @default(MEMBER)
+  status      CommunityMemberStatus @default(ACTIVE)
+  joinedAt    DateTime              @default(now())
+  community   Community             @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([communityId, userId])
+  @@index([userId])
+}
+
+model CommunitySpace {
+  id          String    @id @default(cuid())
+  communityId String
+  name        String
+  slug        String
+  type        SpaceType @default(DISCUSSION)
+  description String?   @db.Text
+  isPrivate   Boolean   @default(false)
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  community   Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  posts       Post[]
+
+  @@unique([communityId, slug])
+}
+
+model CommunityInvite {
+  id          String        @id @default(cuid())
+  communityId String
+  inviterId   String
+  email       String?
+  token       String        @unique
+  role        CommunityRole @default(MEMBER)
+  acceptedAt  DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime      @default(now())
+  community   Community     @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  inviter     User          @relation("CommunityInviter", fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@index([communityId])
+}
+
+// ------------------------------ POSTS -------------------------------------
+
+model Post {
+  id           String     @id @default(cuid())
+  authorId     String
+  type         PostType   @default(TEXT)
+  status       PostStatus @default(PUBLISHED)
+  content      String?    @db.Text
+  communityId  String?
+  spaceId      String?
+  eventId      String?
+  isPinned     Boolean    @default(false)
+  scheduledFor DateTime?
+  hashtags     String[]   @default([])
+  mentions     String[]   @default([])
+  likeCount    Int        @default(0)
+  commentCount Int        @default(0)
+  shareCount   Int        @default(0)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  deletedAt    DateTime?
+
+  author    User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  community Community?      @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  space     CommunitySpace? @relation(fields: [spaceId], references: [id], onDelete: SetNull)
+  event     Event?          @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  media     Media[]
+  poll      Poll?
+  comments  Comment[]
+  reactions Reaction[]
+  bookmarks Bookmark[]
+
+  @@index([authorId])
+  @@index([communityId])
+  @@index([status, createdAt])
+  @@index([createdAt])
+}
+
+model Media {
+  id           String    @id @default(cuid())
+  url          String
+  kind         MediaKind
+  mimeType     String?
+  bytes        Int?
+  width        Int?
+  height       Int?
+  thumbnailUrl String?
+  postId       String?
+  messageId    String?
+  userId       String?
+  eventId      String?
+  communityId  String?
+  createdAt    DateTime  @default(now())
+
+  post      Post?      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  message   Message?   @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  uploader  User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  event     Event?     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  community Community? @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@index([messageId])
+}
+
+model Poll {
+  id        String       @id @default(cuid())
+  postId    String       @unique
+  question  String
+  endsAt    DateTime?
+  createdAt DateTime     @default(now())
+  post      Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  options   PollOption[]
+}
+
+model PollOption {
+  id      String     @id @default(cuid())
+  pollId  String
+  text    String
+  votes   Int        @default(0)
+  poll    Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votedBy PollVote[]
+
+  @@index([pollId])
+}
+
+model PollVote {
+  id        String     @id @default(cuid())
+  optionId  String
+  userId    String
+  createdAt DateTime   @default(now())
+  option    PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([optionId, userId])
+  @@index([userId])
+}
+
+model Comment {
+  id        String    @id @default(cuid())
+  postId    String
+  authorId  String
+  parentId  String?
+  content   String    @db.Text
+  likeCount Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  post      Post       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent    Comment?   @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[]  @relation("CommentReplies")
+  reactions Reaction[]
+
+  @@index([postId])
+  @@index([authorId])
+  @@index([parentId])
+}
+
+model Reaction {
+  id        String       @id @default(cuid())
+  userId    String
+  postId    String?
+  commentId String?
+  type      ReactionType @default(LIKE)
+  createdAt DateTime     @default(now())
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post?        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment   Comment?     @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@unique([userId, commentId])
+  @@index([postId])
+  @@index([commentId])
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+}
+
+// ------------------------------ EVENTS ------------------------------------
+
+model Event {
+  id            String      @id @default(cuid())
+  slug          String      @unique
+  title         String
+  description   String?     @db.Text
+  coverUrl      String?
+  type          EventType   @default(IN_PERSON)
+  status        EventStatus @default(DRAFT)
+  startsAt      DateTime
+  endsAt        DateTime?
+  timezone      String      @default("Asia/Karachi")
+  isOnline      Boolean     @default(false)
+  onlineUrl     String?
+  venueName     String?
+  venueAddress  String?
+  venueCity     String?
+  venueCountry  String?
+  venueLat      Float?
+  venueLng      Float?
+  venueMapUrl   String?
+  communityId   String?
+  organizerId   String
+  attendeeCount Int         @default(0)
+  ticketCount   Int         @default(0)
+  currency      String      @default("PKR")
+  priceMin      Decimal     @default(0) @db.Decimal(12, 2)
+  refundPolicy  String?     @db.Text
+  hasWaitlist   Boolean     @default(true)
+  checkInOpen   Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  deletedAt     DateTime?
+
+  organizer   User            @relation("EventOrganizer", fields: [organizerId], references: [id], onDelete: Cascade)
+  community   Community?      @relation(fields: [communityId], references: [id], onDelete: SetNull)
+  ticketTiers TicketTier[]
+  rsvps       EventRsvp[]
+  orders      Order[]
+  tickets     ETicket[]
+  posts       Post[]
+  media       Media[]
+  promoCodes  PromoCode[]
+  payouts     Payout[]
+  reminders   EventReminder[]
+
+  @@index([organizerId])
+  @@index([communityId])
+  @@index([status, startsAt])
+  @@index([startsAt])
+  @@index([venueCity])
+}
+
+model TicketTier {
+  id            String     @id @default(cuid())
+  eventId       String
+  name          String
+  description   String?    @db.Text
+  type          TicketType @default(PAID)
+  price         Decimal    @default(0) @db.Decimal(12, 2)
+  currency      String     @default("PKR")
+  quantityTotal Int
+  quantitySold  Int        @default(0)
+  saleStartsAt  DateTime?
+  saleEndsAt    DateTime?
+  minPerOrder   Int        @default(1)
+  maxPerOrder   Int        @default(10)
+  isVisible     Boolean    @default(true)
+  isInviteOnly  Boolean    @default(false)
+  order         Int        @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  orderLines OrderLine[]
+  tickets    ETicket[]
+
+  @@index([eventId])
+}
+
+model EventRsvp {
+  id        String     @id @default(cuid())
+  eventId   String
+  userId    String
+  status    RsvpStatus @default(GOING)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  event     Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@index([userId])
+}
+
+model EventReminder {
+  id        String    @id @default(cuid())
+  eventId   String
+  userId    String?
+  offsetMin Int
+  sentAt    DateTime?
+  createdAt DateTime  @default(now())
+  event     Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+}
+
+model PromoCode {
+  id             String       @id @default(cuid())
+  code           String       @unique
+  eventId        String?
+  type           DiscountType @default(PERCENT)
+  value          Decimal      @db.Decimal(12, 2)
+  maxUses        Int?
+  usedCount      Int          @default(0)
+  minOrderAmount Decimal?     @db.Decimal(12, 2)
+  active         Boolean      @default(true)
+  startsAt       DateTime?
+  endsAt         DateTime?
+  createdAt      DateTime     @default(now())
+  event          Event?       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+}
+
+// ---------------------------- TICKETING -----------------------------------
+
+model Order {
+  id            String        @id @default(cuid())
+  code          String        @unique
+  eventId       String
+  buyerId       String
+  status        OrderStatus   @default(PENDING)
+  paymentMethod PaymentMethod
+  paymentStatus PaymentStatus @default(PENDING)
+  subtotal      Decimal       @default(0) @db.Decimal(12, 2)
+  discount      Decimal       @default(0) @db.Decimal(12, 2)
+  platformFee   Decimal       @default(0) @db.Decimal(12, 2)
+  total         Decimal       @default(0) @db.Decimal(12, 2)
+  currency      String        @default("PKR")
+  promoCode     String?
+  holdExpiresAt DateTime?
+  attendeeInfo  Json?
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  event   Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  buyer   User        @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  lines   OrderLine[]
+  tickets ETicket[]
+  payment Payment?
+  refund  Refund?
+
+  @@index([eventId])
+  @@index([buyerId])
+  @@index([status])
+}
+
+model OrderLine {
+  id             String     @id @default(cuid())
+  orderId        String
+  ticketTierId   String
+  ticketTierName String
+  quantity       Int
+  unitPrice      Decimal    @db.Decimal(12, 2)
+  total          Decimal    @db.Decimal(12, 2)
+  order          Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ticketTier     TicketTier @relation(fields: [ticketTierId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+}
+
+model Payment {
+  id           String        @id @default(cuid())
+  orderId      String        @unique
+  provider     String        @default("mock")
+  method       PaymentMethod
+  status       PaymentStatus @default(PENDING)
+  amount       Decimal       @db.Decimal(12, 2)
+  currency     String        @default("PKR")
+  providerRef  String?
+  raw          Json?
+  approvedById String?
+  approvedAt   DateTime?
+  note         String?       @db.Text
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  order        Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  approvedBy   User?         @relation("PaymentApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+}
+
+model ETicket {
+  id             String       @id @default(cuid())
+  code           String       @unique
+  orderId        String
+  eventId        String
+  ticketTierId   String
+  ticketTierName String
+  qrPayload      String       @unique
+  status         TicketStatus @default(VALID)
+  attendeeName   String?
+  attendeeEmail  String?
+  checkedInAt    DateTime?
+  checkInById    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  order      Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  event      Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ticketTier TicketTier @relation(fields: [ticketTierId], references: [id], onDelete: Restrict)
+  checkIns   CheckIn[]
+
+  @@index([orderId])
+  @@index([eventId])
+  @@index([status])
+}
+
+model CheckIn {
+  id          String        @id @default(cuid())
+  ticketId    String
+  eventId     String
+  scannedById String?
+  method      CheckInMethod @default(QR)
+  success     Boolean       @default(true)
+  note        String?
+  createdAt   DateTime      @default(now())
+  ticket      ETicket       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  scannedBy   User?         @relation("CheckInScanner", fields: [scannedById], references: [id], onDelete: SetNull)
+
+  @@index([eventId])
+}
+
+model Refund {
+  id            String       @id @default(cuid())
+  orderId       String       @unique
+  amount        Decimal      @db.Decimal(12, 2)
+  reason        String?      @db.Text
+  status        RefundStatus @default(REQUESTED)
+  requestedById String?
+  processedById String?
+  processedAt   DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  order         Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model Payout {
+  id          String       @id @default(cuid())
+  organizerId String
+  eventId     String?
+  amount      Decimal      @db.Decimal(12, 2)
+  platformFee Decimal      @default(0) @db.Decimal(12, 2)
+  status      PayoutStatus @default(PENDING)
+  period      String?
+  processedAt DateTime?
+  note        String?      @db.Text
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  organizer   User         @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  event       Event?       @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([organizerId])
+  @@index([status])
+}
+
+// ---------------------------- MESSAGING -----------------------------------
+
+model Conversation {
+  id            String           @id @default(cuid())
+  type          ConversationType @default(DIRECT)
+  title         String?
+  lastMessageAt DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@index([lastMessageAt])
+}
+
+model ConversationParticipant {
+  id             String       @id @default(cuid())
+  conversationId String
+  userId         String
+  lastReadAt     DateTime?
+  joinedAt       DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id             String      @id @default(cuid())
+  conversationId String
+  senderId       String
+  type           MessageType @default(TEXT)
+  body           String?     @db.Text
+  readBy         String[]    @default([])
+  deletedAt      DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  media        Media[]
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+}
+
+// -------------------------- NOTIFICATIONS ---------------------------------
+
+model Notification {
+  id         String           @id @default(cuid())
+  userId     String
+  type       NotificationType
+  title      String
+  body       String
+  read       Boolean          @default(false)
+  actorId    String?
+  targetType String?
+  targetId   String?
+  deepLink   String?
+  data       Json?
+  createdAt  DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
+}
+
+model NotificationPreference {
+  id       String  @id @default(cuid())
+  userId   String  @unique
+  push     Boolean @default(true)
+  email    Boolean @default(true)
+  inApp    Boolean @default(true)
+  channels Json?
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// --------------------------- MODERATION -----------------------------------
+
+model Report {
+  id             String           @id @default(cuid())
+  reporterId     String
+  targetType     ReportTargetType
+  targetId       String
+  reason         ReportReason
+  details        String?          @db.Text
+  status         ReportStatus     @default(OPEN)
+  reviewedById   String?
+  reviewedAt     DateTime?
+  resolutionNote String?          @db.Text
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  reporter   User  @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("ReportReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([targetType, targetId])
+}

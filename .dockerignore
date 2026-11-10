@@ -1,0 +1,32 @@
+# Dependencies (installed fresh inside the image)
+**/node_modules
+
+# Build outputs
+**/dist
+**/.next
+**/.expo
+**/.turbo
+**/build
+**/*.tsbuildinfo
+apps/mobile/dist-verify
+
+# Version control
+.git
+.gitignore
+
+# Env & secrets — NEVER bake into images (set on the platform instead)
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.production.example
+
+# Local dev artifacts
+uploads
+**/uploads
+*.log
+**/*.log
+
+# Docs / misc
+**/*.pdf
+.DS_Store
+Thumbs.db

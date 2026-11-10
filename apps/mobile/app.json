@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Mehfil",
+    "slug": "mehfil",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "mehfil",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#22a26d",
+      "resizeMode": "contain"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "co.joinmehfil.app"
+    },
+    "android": {
+      "package": "co.joinmehfil.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#22a26d"
+      },
+      "permissions": ["CAMERA"]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Mehfil to access your camera to scan event tickets."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

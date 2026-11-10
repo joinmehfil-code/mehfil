@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mehfil-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mehfil
+      POSTGRES_PASSWORD: mehfil_dev_password
+      POSTGRES_DB: mehfil
+    ports:
+      - "5432:5432"
+    volumes:
+      - mehfil_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mehfil"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: mehfil-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - mehfil_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mehfil_pgdata:
+  mehfil_redisdata:
